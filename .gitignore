@@ -1,3 +1,27 @@
+# Environment secrets (never commit real credentials)
 .env
+.env.*
+!.env.example
+
+# Python runtime artifacts
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Runtime caches and temporary files
+.trt_cache/
+/tmp/trt_cache/
+*.lock
+
+# Release bundles and checksum manifests
+release_*.tar.gz
+images.tar.gz
+SHA256SUMS
+
+# OS / Editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

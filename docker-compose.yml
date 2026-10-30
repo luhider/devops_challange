@@ -14,26 +14,33 @@ services:
       - sensor_backplane
 
   inference_worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eoir-stack:1.4.2
     command: ["python", "inference_worker/worker.py"]
     environment:
       ENGINE_PATH: /app/models/eo_detector_fp16.engine
       MANIFEST_PATH: /app/models/manifest.json
       WORKER_PORT: "9000"
       TRT_CACHE_DIR: /tmp/trt_cache
+      ENGINE_WARMUP_SEC: "1.0"
     volumes:
       - ./models:/app/models:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/status', timeout=2)"]
-      interval: 3s
+      interval: 2s
       timeout: 2s
       retries: 3
-      start_period: 5s
+      start_period: 3s
     networks:
       - sensor_backplane
 
   vision_api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: eoir-stack:1.4.2
     command: ["python", "vision_api/app.py"]
     environment:
       APP_PORT: "8000"
@@ -47,6 +54,12 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 3s
+      timeout: 2s
+      retries: 3
+      start_period: 4s
     networks:
       - edge_dmz
       - sensor_backplane

@@ -13,17 +13,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run unit tests
+      - name: Run unit tests and model artifact verification
         run: |
-          python -m unittest discover -s tests || true
+          python -m unittest discover -s tests
 
   build_and_publish:
     runs-on: ubuntu-latest
+    needs: [lint_and_test]
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
+
+      - name: Determine immutable release tag
+        id: vars
         run: |
-          docker build -t registry.site.local/eoir-stack:latest .
+          VERSION=$(python -c "import json; print(json.load(open('models/manifest.json'))['version'])")
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+          IMMUTABLE_TAG="v${VERSION}-${SHORT_SHA}"
+          echo "tag=${IMMUTABLE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build container image
+        run: |
+          docker build \
+            -t "registry.site.local/eoir-stack:${{ steps.vars.outputs.tag }}" \
+            -t "registry.site.local/eoir-stack:${{ steps.vars.outputs.version }}" \
+            .
+
+      - name: Enforce container size policy (< 220 MB)
+        run: |
+          IMAGE_SIZE_BYTES=$(docker image inspect "registry.site.local/eoir-stack:${{ steps.vars.outputs.tag }}" --format='{{.Size}}')
+          IMAGE_SIZE_MB=$(( IMAGE_SIZE_BYTES / 1024 / 1024 ))
+          echo "Built image size: ${IMAGE_SIZE_MB} MB (limit: 220 MB)"
+          if [ "$IMAGE_SIZE_MB" -ge 220 ]; then
+            echo "ERROR: Image size ${IMAGE_SIZE_MB}MB violates the 220MB ceiling policy"
+            exit 1
+          fi
+
       - name: Promote to defence site baseline
         run: |
-          echo "Tagging registry.site.local/eoir-stack:latest as site-approved"
+          echo "Promoting immutable release registry.site.local/eoir-stack:${{ steps.vars.outputs.tag }} as site-approved baseline"

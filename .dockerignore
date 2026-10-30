@@ -1,0 +1,15 @@
+.git
+.gitignore
+.github
+tests
+*.md
+.env
+.env.*
+!*.example
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+release_*.tar.gz
+SHA256SUMS
+mainfest.json
